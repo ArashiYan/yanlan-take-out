@@ -9,6 +9,7 @@ import com.ityanlan.reggie.utils.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @Slf4j
@@ -23,6 +25,9 @@ import java.util.Map;
 public class UserController {
     @Autowired
     UserService userService;
+
+    @Autowired
+    RedisTemplate redisTemplate;
 
     /**
      * 生成验证码，向手机发送验证码
@@ -37,14 +42,16 @@ public class UserController {
 
         if (StringUtils.isNotEmpty(phone)){
             //生成随机的6位验证码
-            Integer code = ValidateCodeUtils.generateValidateCode(6);
+            String  code = ValidateCodeUtils.generateValidateCode(6).toString();
             log.info("code = {}",code);
             //调用阿里云api发送短信
 
 //            SMSUtils.sendMessage("言岚外卖", "模版", "phone手机号","code验证码");
 
             //将生成的验证码存到session
-            session.setAttribute(phone, code);
+//            session.setAttribute(phone, code);
+            //生成的验证码存入缓存中
+            redisTemplate.opsForValue().set(phone,code,5, TimeUnit.MINUTES);
             return R.success("验证码发送成功");
         }
         return R.error("验证码发送失败");
@@ -64,8 +71,9 @@ public class UserController {
         String code = map.get("code").toString();
 
         //从session中获取保存的验证码
-        String codeInSession = session.getAttribute(phone).toString();
-
+//        String codeInSession = session.getAttribute(phone).toString();
+        //从redis中获取验证码
+        Object codeInSession = redisTemplate.opsForValue().get(phone);
         //进行验证码比对
         if (codeInSession != null&& codeInSession.equals(code)){
             //能够比对成功则登录成功
@@ -82,6 +90,8 @@ public class UserController {
 
                 userService.save(user);
             }
+            //验证码使用完后删除
+            redisTemplate.delete(phone);
             session.setAttribute("user",user.getId());
             return R.success(user);
         }
