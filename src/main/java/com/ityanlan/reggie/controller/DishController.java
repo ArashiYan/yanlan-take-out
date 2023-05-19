@@ -10,6 +10,10 @@ import com.ityanlan.reggie.entity.DishFlavor;
 import com.ityanlan.reggie.service.CategoryService;
 import com.ityanlan.reggie.service.DishFlavorService;
 import com.ityanlan.reggie.service.DishService;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +31,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/dish")
 @Slf4j
+@Api(tags = "菜品接口")
 public class DishController {
     @Autowired
     private CategoryService categoryService;
@@ -46,6 +51,7 @@ public class DishController {
      * @return
      */
     @PostMapping
+    @ApiOperation(value = "添加菜品")
     public R<String> addDish(@RequestBody DishDto dishDto){
 //        log.info(dishDto.toString());
         dishService.saveWithFlavor(dishDto);
@@ -64,6 +70,11 @@ public class DishController {
      * @return
      */
     @GetMapping("/page")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "page",value = "页码",required = true),
+            @ApiImplicitParam(name = "pageSize",value = "每页记录数",required = true),
+            @ApiImplicitParam(name = "name",value = "套餐名称",required = false),
+    })
     public R<Page> page(int page, int pageSize, String name){
         //条件构造器
         Page<Dish> pageInfo = new Page<>(page,pageSize);
